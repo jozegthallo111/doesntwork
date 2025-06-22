@@ -2,8 +2,8 @@ name: Run Pokemon Scraper Monthly
 
 on:
   schedule:
-    - cron: '0 0 1 * *'  # 00:00 UTC on day 1 monthly
-  workflow_dispatch:  # manual trigger
+    - cron: '0 0 1 * *'  # At 00:00 on day 1 of each month (UTC)
+  workflow_dispatch:     # Allows manual trigger
 
 jobs:
   scrape:
@@ -23,25 +23,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Install Google Chrome
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-
-    - name: Install ChromeDriver
-      run: |
-        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
-        CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%.*})
-        wget -N https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip
-        unzip chromedriver_linux64.zip
-        chmod +x chromedriver
-        sudo mv -f chromedriver /usr/local/bin/chromedriver
-
     - name: Run scraper
       run: python scraper.py
 
-    - name: Upload CSV output
-      uses: actions/upload-artifact@v3
+    - name: Upload output CSV artifact
+      uses: actions/upload-artifact@v4
       with:
         name: scraper-output
         path: allcorectpricees.csv
