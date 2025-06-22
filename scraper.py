@@ -4,14 +4,12 @@ import os
 import zipfile
 from datetime import datetime
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-CHROMEDRIVER_PATH = "/content/chromedriver-linux64/chromedriver"
 BASE_URL = "https://www.pricecharting.com"
 CATEGORY_URL = "https://www.pricecharting.com/category/pokemon-cards"
 PROCESSED_CARDS_FILE = "scraped_cards.txt"
@@ -20,12 +18,11 @@ CSV_FILENAME = "allcorectpricees.csv"
 
 def init_driver():
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")               # Headless mode for cloud
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
-    options.add_argument(f"--user-data-dir=/tmp/unique_profile_{int(time.time())}")
-    service = Service(CHROMEDRIVER_PATH)
-    driver = webdriver.Chrome(service=service, options=options)
+    options.add_argument("--disable-dev-shm-usage")  # Fix shared memory issues in Docker/GitHub runners
+    driver = webdriver.Chrome(options=options)       # Uses default ChromeDriver on PATH
     driver.set_window_size(1920, 1080)
     return driver
 
