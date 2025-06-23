@@ -1,8 +1,6 @@
 import time
 import csv
 import os
-import zipfile
-from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -12,11 +10,163 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
-BASE_URL = "https://www.pricecharting.com"
 CSV_FILENAME = "filtered_cards.csv"
 PROCESSED_CARDS_FILE = "scraped_cards.txt"
 
-# ENGLISH_POKEMON_SETS already defined above
+ENGLISH_POKEMON_SETS = [
+    "Pokemon 1999 Topps Movie",
+    "Pokemon 1999 Topps Movie Evolution",
+    "Pokemon 1999 Topps TV",
+    "Pokemon 2000 Topps Chrome",
+    "Pokemon 2000 Topps TV",
+    "Pokemon 2020 Battle Academy",
+    "Pokemon Ancient Origins",
+    "Pokemon Aquapolis",
+    "Pokemon Arceus",
+    "Pokemon Astral Radiance",
+    "Pokemon BREAKpoint",
+    "Pokemon BREAKthrough",
+    "Pokemon Base Set",
+    "Pokemon Base Set 2",
+    "Pokemon Battle Styles",
+    "Pokemon Best of Game",
+    "Pokemon Black & White",
+    "Pokemon Boundaries Crossed",
+    "Pokemon Brilliant Stars",
+    "Pokemon Burger King",
+    "Pokemon Burning Shadows",
+    "Pokemon Call of Legends",
+    "Pokemon Celebrations",
+    "Pokemon Celestial Storm",
+    "Pokemon Champion's Path",
+    "Pokemon Chilling Reign",
+    "Pokemon Cosmic Eclipse",
+    "Pokemon Crimson Invasion",
+    "Pokemon Crown Zenith",
+    "Pokemon Crystal Guardians",
+    "Pokemon Dark Explorers",
+    "Pokemon Darkness Ablaze",
+    "Pokemon Delta Species",
+    "Pokemon Deoxys",
+    "Pokemon Detective Pikachu",
+    "Pokemon Diamond & Pearl",
+    "Pokemon Double Crisis",
+    "Pokemon Dragon",
+    "Pokemon Dragon Frontiers",
+    "Pokemon Dragon Majesty",
+    "Pokemon Dragon Vault",
+    "Pokemon Dragons Exalted",
+    "Pokemon Emerald",
+    "Pokemon Emerging Powers",
+    "Pokemon Evolutions",
+    "Pokemon Evolving Skies",
+    "Pokemon Expedition",
+    "Pokemon Fates Collide",
+    "Pokemon Fire Red & Leaf Green",
+    "Pokemon Flashfire",
+    "Pokemon Forbidden Light",
+    "Pokemon Fossil",
+    "Pokemon Furious Fists",
+    "Pokemon Fusion Strike",
+    "Pokemon Generations",
+    "Pokemon Go",
+    "Pokemon Great Encounters",
+    "Pokemon Guardians Rising",
+    "Pokemon Gym Challenge",
+    "Pokemon Gym Heroes",
+    "Pokemon HeartGold & SoulSilver",
+    "Pokemon Hidden Fates",
+    "Pokemon Hidden Legends",
+    "Pokemon Holon Phantoms",
+    "Pokemon Journey Together",
+    "Pokemon Jungle",
+    "Pokemon Legend Maker",
+    "Pokemon Legendary Collection",
+    "Pokemon Legendary Treasures",
+    "Pokemon Legends Awakened",
+    "Pokemon Lost Origin",
+    "Pokemon Lost Thunder",
+    "Pokemon Majestic Dawn",
+    "Pokemon McDonalds 2018",
+    "Pokemon McDonalds 2019",
+    "Pokemon McDonalds 2021",
+    "Pokemon McDonalds 2022",
+    "Pokemon McDonalds 2023",
+    "Pokemon McDonalds 2024",
+    "Pokemon Mysterious Treasures",
+    "Pokemon Neo Destiny",
+    "Pokemon Neo Discovery",
+    "Pokemon Neo Genesis",
+    "Pokemon Neo Revelation",
+    "Pokemon Next Destinies",
+    "Pokemon Noble Victories",
+    "Pokemon Obsidian Flames",
+    "Pokemon Paldea Evolved",
+    "Pokemon Paldean Fates",
+    "Pokemon Paradox Rift",
+    "Pokemon Phantom Forces",
+    "Pokemon Pikachu Libre & Suicune",
+    "Pokemon Plasma Blast",
+    "Pokemon Plasma Freeze",
+    "Pokemon Plasma Storm",
+    "Pokemon Platinum",
+    "Pokemon POP Series 1",
+    "Pokemon POP Series 2",
+    "Pokemon POP Series 3",
+    "Pokemon POP Series 4",
+    "Pokemon POP Series 5",
+    "Pokemon POP Series 9",
+    "Pokemon Power Keepers",
+    "Pokemon Primal Clash",
+    "Pokemon Prismatic Evolutions",
+    "Pokemon Promo",
+    "Pokemon Rebel Clash",
+    "Pokemon Rising Rivals",
+    "Pokemon Roaring Skies",
+    "Pokemon Ruby & Sapphire",
+    "Pokemon Rumble",
+    "Pokemon Sandstorm",
+    "Pokemon Scarlet & Violet",
+    "Pokemon Scarlet & Violet 151",
+    "Pokemon Scarlet & Violet Energy",
+    "Pokemon Secret Wonders",
+    "Pokemon Shining Fates",
+    "Pokemon Shining Legends",
+    "Pokemon Shrouded Fable",
+    "Pokemon Silver Tempest",
+    "Pokemon Skyridge",
+    "Pokemon Southern Islands",
+    "Pokemon Steam Siege",
+    "Pokemon Stellar Crown",
+    "Pokemon Stormfront",
+    "Pokemon Sun & Moon",
+    "Pokemon Supreme Victors",
+    "Pokemon Surging Sparks",
+    "Pokemon Sword & Shield",
+    "Pokemon TCG Classic: Blastoise Deck",
+    "Pokemon TCG Classic: Charizard Deck",
+    "Pokemon TCG Classic: Venusaur Deck",
+    "Pokemon Team Magma & Team Aqua",
+    "Pokemon Team Rocket",
+    "Pokemon Team Rocket Returns",
+    "Pokemon Team Up",
+    "Pokemon Temporal Forces",
+    "Pokemon Trick or Trade 2022",
+    "Pokemon Trick or Trade 2023",
+    "Pokemon Trick or Trade 2024",
+    "Pokemon Triumphant",
+    "Pokemon Twilight Masquerade",
+    "Pokemon Ultra Prism",
+    "Pokemon Unbroken Bonds",
+    "Pokemon Undaunted",
+    "Pokemon Unified Minds",
+    "Pokemon Unleashed",
+    "Pokemon Unseen Forces",
+    "Pokemon Vivid Voltage",
+    "Pokemon World Championships 2007",
+    "Pokemon World Championships 2023",
+    "Pokemon XY"
+]
 
 def init_driver():
     options = Options()
@@ -34,7 +184,7 @@ def get_card_links_from_set(driver, set_name):
     time.sleep(3)
     links = driver.find_elements(By.CSS_SELECTOR, "div.sets a")
     for link in links:
-        if set_name.lower() in link.text.strip().lower():
+        if set_name.lower() == link.text.strip().lower():
             return get_card_links(driver, link.get_attribute("href"))
     print(f"Set not found: {set_name}")
     return []
@@ -71,8 +221,9 @@ def fetch_card_data(driver, card_url):
         return None
 
     name = driver.find_element(By.CSS_SELECTOR, "h1#product_name").text.strip()
-    if any(word in name.lower() for word in ["japanese", "jpn", "japan"]):
-        print(f"Skipped Japanese card: {name}")
+    # Filter out cards containing Japanese or Chinese (case insensitive)
+    if any(word in name.lower() for word in ["japanese", "chinese"]):
+        print(f"Skipped non-English card: {name}")
         return None
 
     prices = driver.find_elements(By.CSS_SELECTOR, "span.price.js-price")
@@ -101,67 +252,76 @@ def fetch_card_data(driver, card_url):
     except NoSuchElementException:
         model_number = "N/A"
 
-    image_url = next((img.get_attribute("src") for img in driver.find_elements(By.CSS_SELECTOR, "img") if img.get_attribute("src") and "1600.jpg" in img.get_attribute("src")), "N/A")
+    image_url = ""
+    try:
+        image_url = driver.find_element(By.CSS_SELECTOR, "img#product_image").get_attribute("src")
+    except NoSuchElementException:
+        image_url = ""
 
     return {
         "Name": name,
-        "Raw Price": raw_price,
-        "Grade 7 Price": grade_7,
-        "Grade 8 Price": grade_8,
-        "Grade 9 Price": grade_9,
-        "Grade 9.5 Price": grade_9_5,
-        "PSA 10 Price": psa_10,
+        "Price": raw_price,
+        "Grade 7": grade_7,
+        "Grade 8": grade_8,
+        "Grade 9": grade_9,
+        "Grade 9.5": grade_9_5,
+        "PSA 10": psa_10,
         "Rarity": rarity,
         "Model Number": model_number,
         "Image URL": image_url,
-        "Card URL": card_url
+        "URL": card_url,
     }
 
-def save_to_csv(data, filename=CSV_FILENAME, write_header=False, mode='a'):
-    if not data:
-        return
-    with open(filename, mode, newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=data[0].keys())
-        if write_header:
+def load_processed_cards():
+    if not os.path.exists(PROCESSED_CARDS_FILE):
+        return set()
+    with open(PROCESSED_CARDS_FILE, "r") as f:
+        return set(line.strip() for line in f)
+
+def save_processed_card(card_url):
+    with open(PROCESSED_CARDS_FILE, "a") as f:
+        f.write(card_url + "\n")
+
+def save_to_csv(data, filename=CSV_FILENAME):
+    file_exists = os.path.isfile(filename)
+    with open(filename, "a", newline="", encoding="utf-8") as csvfile:
+        fieldnames = [
+            "Name", "Price", "Grade 7", "Grade 8", "Grade 9", "Grade 9.5", "PSA 10",
+            "Rarity", "Model Number", "Image URL", "URL"
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if not file_exists:
             writer.writeheader()
-        writer.writerows(data)
-    print(f"Saved {len(data)} cards to {filename}")
+        writer.writerow(data)
 
 def main():
     driver = init_driver()
+    processed_cards = load_processed_cards()
+
     try:
-        processed_cards = set()
-        if os.path.exists(PROCESSED_CARDS_FILE):
-            with open(PROCESSED_CARDS_FILE, "r", encoding="utf-8") as f:
-                processed_cards = set(line.strip() for line in f)
-
-        all_cards_data = []
-        first_save = True
-        processed_count = 0
-
         for set_name in ENGLISH_POKEMON_SETS:
-            card_links = get_card_links_from_set(driver, set_name)
-            for card_url in card_links:
-                if card_url in processed_cards:
-                    continue
-                card_data = fetch_card_data(driver, card_url)
-                if card_data:
-                    all_cards_data.append(card_data)
-                    with open(PROCESSED_CARDS_FILE, "a", encoding="utf-8") as f:
-                        f.write(card_url + "\n")
-                    processed_cards.add(card_url)
-                    processed_count += 1
-                if processed_count % 1000 == 0:
-                    save_to_csv(all_cards_data, write_header=first_save)
-                    all_cards_data = []
-                    first_save = False
-                time.sleep(1)
+            # Skip any sets with Japanese or Chinese in their name
+            if any(word in set_name.lower() for word in ["japanese", "chinese"]):
+                print(f"Skipping set due to language filter: {set_name}")
+                continue
 
-        if all_cards_data:
-            save_to_csv(all_cards_data, write_header=first_save)
+            card_links = get_card_links_from_set(driver, set_name)
+            print(f"Found {len(card_links)} cards in set: {set_name}")
+
+            for link in card_links:
+                if link in processed_cards:
+                    print(f"Skipping already processed card: {link}")
+                    continue
+                card_data = fetch_card_data(driver, link)
+                if card_data:
+                    save_to_csv(card_data)
+                    save_processed_card(link)
+                    print(f"Saved card: {card_data['Name']}")
+                else:
+                    print(f"Skipped card: {link}")
+                time.sleep(2)
     finally:
         driver.quit()
-        print("Driver closed.")
 
 if __name__ == "__main__":
     main()
